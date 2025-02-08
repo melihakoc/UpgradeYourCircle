@@ -73,7 +73,7 @@ if all(friends):
     user_score += st.slider("How focused are you on your career/academic goals?", 1, 5, 3)
 
     # Ortalama puan hesapla
-    avg_friend_score = sum(friend_scores.values()) / len(friend_scores)
+    avg_friend_score = sum(friend_scores.values()) / len(friend_scores) /8
 
     if st.button("See Results"):
         st.subheader("Your Social Compatibility Analysis 🧐")
