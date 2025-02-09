@@ -1,5 +1,9 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import pandas as pd
+import altair as alt
+from fpdf import FPDF
+import os
 
 def analyze_friend(friend):
     st.subheader(f"About {friend}")
@@ -12,16 +16,32 @@ def analyze_friend(friend):
         "Does this friend speak English?": ["Fluent (5)", "Intermediate (3)", "Not at all (1)", "N/A"],
         "Does this friend have clear life goals?": ["Yes, very focused (5)", "Has some ideas but not clear (3)", "No goals (1)"],
         "Does this friend care about career or academic growth?": ["Yes (5)", "Somewhat (3)", "Not really (1)"],
-        "What is this friend’s general attitude towards life?": ["Positive and motivated (5)", "Sometimes positive (3)", "Mostly negative (1)"]
+        "What is this friend’s general attitude towards life?": ["Positive and motivated (5)", "Sometimes positive (3)", "Mostly negative (1)"],
+        "Is this friend open to new experiences and creativity?": ["Yes (5)", "Sometimes (3)", "No (1)"],
+        "Does this friend encourage you to think outside the box?": ["Yes (5)", "Sometimes (3)", "No (1)"]
     }
 
     scores = []
-    for question, options in questions.items():
-        answer = st.radio(question, [""] + options, index=0)
+    for idx, (question, options) in enumerate(questions.items()):
+        answer = st.radio(question, [""] + options, index=0, key=f"{friend}_{idx}")
         score = {opt: int(opt[-2]) for opt in options if opt[-2].isdigit()}.get(answer, 0)
         scores.append(score)
 
     return sum(scores)
+
+def generate_pdf(user_score, avg_friend_score, friend_scores):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Friend Analysis Report", ln=True, align='C')
+    pdf.ln(10)
+    pdf.cell(200, 10, txt=f"Your Score: {user_score / 6:.2f}/5", ln=True)
+    pdf.cell(200, 10, txt=f"Friends' Average Score: {avg_friend_score:.2f}/5", ln=True)
+    for friend, score in friend_scores.items():
+        pdf.cell(200, 10, txt=f"{friend}: {score}/50", ln=True)
+    pdf_path = "friend_analysis.pdf"
+    pdf.output(pdf_path)
+    return pdf_path
 
 st.title("Are Your Friends Holding You Back? 🤔")
 st.write("Enter the names of your five closest friends to analyze how they influence you.")
@@ -35,18 +55,29 @@ if all(friend_names):
         if friend:
             friend_scores[friend] = analyze_friend(friend)
 
+    st.subheader("Friendship Score Comparison 📊")
+    if friend_scores:
+        fig, ax = plt.subplots()
+        ax.bar(friend_scores.keys(), friend_scores.values(), color="blue", alpha=0.6, label="Friends")
+        ax.set_ylabel("Score")
+        ax.legend()
+        st.pyplot(fig)
+
     st.subheader("Now, let's see how you compare to your friends!")
     user_score = sum([
         st.slider("How disciplined are you in personal growth?", 1, 5, 3),
         st.slider("How positive is your mindset?", 1, 5, 3),
-        st.slider("How focused are you on your career/academic goals?", 1, 5, 3)
+        st.slider("How focused are you on your career/academic goals?", 1, 5, 3),
+        st.slider("How often do you try new things?", 1, 5, 3),
+        st.slider("Do you consider yourself a creative person?", 1, 5, 3),
+        st.slider("How comfortable are you stepping out of your comfort zone?", 1, 5, 3)
     ])
 
-    avg_friend_score = sum(friend_scores.values()) / len(friend_scores) / 8
+    avg_friend_score = sum(friend_scores.values()) / len(friend_scores) / 10 if len(friend_scores) > 0 else 0
 
     if st.button("See Results"):
         st.subheader("Your Social Compatibility Analysis 🧐")
-        st.write(f"**Your average personal development score:** {user_score / 3:.2f}/5")
+        st.write(f"**Your average personal development score:** {user_score / 6:.2f}/5")
         st.write(f"**Your friends' average score:** {avg_friend_score:.2f}/5")
 
         if user_score > avg_friend_score + 1:
@@ -56,18 +87,11 @@ if all(friend_names):
         else:
             st.info("✅ You and your friends are on the same level. Keep growing together!")
 
-        # Grafiksel analiz
-        st.subheader("Friendship Score Comparison 📊")
-        fig, ax = plt.subplots()
-        ax.bar(friend_scores.keys(), friend_scores.values(), color="blue", alpha=0.6, label="Friends")
-        ax.axhline(user_score / 3, color="red", linestyle="dashed", label="You")
-        ax.set_ylabel("Score")
-        ax.legend()
-        st.pyplot(fig)
+        if st.button("Download Results as PDF"):
+            pdf_path = generate_pdf(user_score, avg_friend_score, friend_scores)
+            with open(pdf_path, "rb") as file:
+                st.download_button("Download PDF", file, file_name="friend_analysis.pdf")
 
-        # Raporu indirme seçeneği
-        if st.button("Download Report"):
-            report_text = f"Your Score: {user_score}\n"
-            for friend, score in friend_scores.items():
-                report_text += f"{friend}: {score}\n"
-            st.download_button("Download as Text File", report_text, file_name="friend_analysis.txt")
+        for friend, score in friend_scores.items():
+            if score < avg_friend_score:
+                st.warning(f"💡 {friend} might benefit from more self-improvement activities! You can encourage them to set personal goals.")
