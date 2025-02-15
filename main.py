@@ -95,4 +95,5 @@ if all(friends):
         st.text_area("Copy and share:", share_text)
 
         # ✅ **Tıklanabilir Link**
-        st.markdown("[🔗 Click here to compare your results!](https://your-app-link.com)")
+        st.markdown("[🔗 Click here to compare your results!](https://upgradeyourcircle-pzccvqmeqqkw9fegdgnrac.streamlit.app)")
+
